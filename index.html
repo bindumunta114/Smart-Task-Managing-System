@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Task Manager</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            background: #f4f4f4; 
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 100%;
+        }
+        input, select, button { padding: 8px; margin: 5px 5px 5px 0; }
+        ul { list-style: none; padding: 0; }
+        li { 
+            background: #f9f9f9; 
+            margin: 10px 0; 
+            padding: 15px; 
+            border-radius: 5px; 
+            border: 1px solid #ddd; 
+            line-height: 1.4; 
+        }
+        li.alert-task {
+            background-color: #ffdddd;
+            border-color: #ff4d4d;
+        }
+        #datetime {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        li button { margin-top: 10px; margin-right: 5px; }
+
+        /* Green color for the Add Task button */
+        #addBtn {
+            background-color: #28a745; /* Changed from blue to green */
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #addBtn:hover {
+            background-color: #218838;
+        }
+        .editBtn { 
+            background-color: #007bff; /* Edit button is now blue */
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .doneBtn {
+            background-color: #ffc107; /* Orange for 'Done' */
+            color: black;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Smart Task Manager</h2>
+        <p id="datetime"></p> 
+
+        <input id="title" type="text" placeholder="Task Title">
+        <input id="deadline" type="datetime-local">
+        <select id="priority">
+            <option>Low</option>
+            <option>Medium</option>
+            <option>High</option>
+        </select>
+        <button id="addBtn">Add Task</button>
+        
+        <ul id="taskList"></ul> 
+    </div>
+
+<script>
+    let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+
+    function updateDateTime() {
+        const now = new Date();
+        document.getElementById("datetime").textContent = now.toLocaleString();
+    }
+
+    function addTask() {
+        const title = document.getElementById("title").value;
+        const deadline = document.getElementById("deadline").value;
+        const priority = document.getElementById("priority").value;
+        if (!title || !deadline) { alert("Please fill all fields!"); return; }
+        const newTask = { title, deadline, priority, alerted: false, done: false };
+        tasks.push(newTask);
+        localStorage.setItem("tasks", JSON.stringify(tasks));
+        displayTasks();
+        document.getElementById("title").value = "";
+        document.getElementById("deadline").value = "";
+    }
+
+    function displayTasks() {
+        const list = document.getElementById("taskList");
+        list.innerHTML = "";
+        tasks.forEach((task, index) => {
+            const li = document.createElement("li");
+
+            if (task.alerted && !task.done) {
+                li.classList.add('alert-task');
+            }
+
+            li.innerHTML = `
+                <strong>${task.title}</strong><br>
+                Deadline: ${new Date(task.deadline).toLocaleString()}<br>
+                Priority: ${task.priority}<br>
+                <button onclick="deleteTask(${index})">Delete</button>
+                <button onclick="editTaskPrompt(${index})" class="editBtn">Edit</button>
+                <button onclick="markAsDone(${index})" class="doneBtn">Done</button>
+            `;
+            list.appendChild(li);
+        });
+    }
+
+    function editTaskPrompt(index) {
+        const task = tasks[index];
+        const newTitle = prompt("Edit Task Title:", task.title);
+        if (newTitle !== null && newTitle.trim() !== "") {
+            task.title = newTitle;
+            localStorage.setItem("tasks", JSON.stringify(tasks));
+            displayTasks();
+        }
+    }
+
+    function markAsDone(index) {
+        tasks[index].done = true;
+        tasks[index].alerted = false;
+        localStorage.setItem("tasks", JSON.stringify(tasks));
+        displayTasks();
+    }
+
+    function deleteTask(index) {
+        tasks.splice(index, 1);
+        localStorage.setItem("tasks", JSON.stringify(tasks));
+        displayTasks();
+    }
+
+    function checkDeadlines() {
+        const now = new Date().getTime();
+        let changed = false;
+        tasks.forEach(task => {
+            if (!task.done) { 
+                const timeDiff = new Date(task.deadline).getTime() - now;
+                const oneHour = 60 * 60 * 1000; // 60 minutes * 60 seconds * 1000 milliseconds
+                if (timeDiff > 0 && timeDiff <=oneHour  && !task.alerted) {
+                    alert("Reminder: " + task.title + " is due in less than 1 Hour complete Task!");
+                    task.alerted = true;
+                    changed = true;
+                } else if (timeDiff < 0 && !task.alerted) {
+                    task.alerted = true; 
+                    changed = true;
+                }
+            }
+        });
+        if (changed) { 
+            localStorage.setItem("tasks", JSON.stringify(tasks)); 
+            displayTasks();
+        }
+    }
+
+    document.getElementById("addBtn").addEventListener("click", addTask);
+    displayTasks();
+    updateDateTime();
+    setInterval(updateDateTime, 1000); 
+    setInterval(checkDeadlines, 10000); 
+</script>
+</body>
+</html>
